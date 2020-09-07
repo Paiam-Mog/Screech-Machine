@@ -15,6 +15,7 @@ Some of the systems and features that I have worked on or implemented during my 
  * Multiplayer Management System that tracks the order of players connected to the game and which side of the screen a player is associated with to properly assign and initialize the respective UI and character animator
  
 A build of the game can be downloaded on itch.io at this link: https://screech-machine.itch.io/screech-machine
+
 A video of the trailer for the game featuring some gameplay can be found at this link here: https://www.youtube.com/watch?v=Z35BGBLjAVw&feature=emb_logo&ab_channel=ScreechMachine 
  
  
