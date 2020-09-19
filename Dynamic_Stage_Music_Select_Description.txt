@@ -1,0 +1,259 @@
+Dynamic Stage and Music Select System:
+
+Description:
+This system manages the various stages and audio tracks that can be selected from a menu before each match. The stage selection contains a list of StageSelect structs that
+contain the background object for the stage, its sprite name to be displayed to the screen and any geometry in the stage (such as walls, spikes, or spikes for the ball to bounce
+off of). Each the players would switch to the next stage, it would update the background and the stage select buttons, disabling them if they reached the end of one side of the
+list allowing for a dynamic amount of stages to be included in the selection list. The music selection contains a list of MusicSlect structs that holds the name of the audio
+track (the name that matches the audio reference name in the Audio Manager system), the display name of the track (this included the artist and song name), and whether the audio
+track had an intro portion. The music selection works similarly to the stage selection, switching the music track playing, updating the display information and disabling the
+menu buttons if they reach the end or beginning of the list, allowing for a dynamic amount of audio tracks to be included in the selection.
+
+
+Coding Features and Strategies Utilized in this system:
+ - Dynamic based selection lists so that developers can add and remove any number of stages or music tracks independently of each other and without having to manually set when
+ the menu button states for each selection
+
+
+Code Snippets:
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+
+public class Stage_Selection_Controller : MonoBehaviour
+{
+    #region Public Variables
+    [System.Serializable]
+    public struct StageSelect
+    {
+        public GameObject background;
+        public Sprite backgroundName;
+        public GameObject StageGeo;
+    }
+
+    [System.Serializable]
+    public struct MusicSelect
+    {
+        public string MusicDisplayName;
+        public string songName;
+        public bool containsIntro;
+    }
+
+    public List<StageSelect> stageSelection = new List<StageSelect>();
+    public List<MusicSelect> musicSelection = new List<MusicSelect>();
+
+    public GameObject LeftStageArrow;
+    public GameObject RightStageArrow;
+    public GameObject UpMusicArrow;
+    public GameObject DownMusicArrow;
+    public Image stageName;
+    public TextMeshProUGUI songDisplayName;
+    public GameObject songDisplayBackDrop;
+
+    public Menu_Button_Controller left;
+    public Menu_Button_Controller right;
+    public Menu_Button_Controller up;
+    public Menu_Button_Controller down;
+    public Menu_Button_Controller confirm;
+    #endregion
+
+    #region Private Variables
+    private int stageInd = 0;
+    private int musicInd = 0;
+    private GameObject previousBackground;
+    private string previousSongName = "";
+    private bool previousSongHaveIntro = false;
+    private bool selectionStart = false;
+    private GameObject currStageGeo;
+    #endregion
+
+    public void BeginSelection()
+    {
+        selectionStart = true;
+
+        left.gameObject.SetActive(true);
+        right.gameObject.SetActive(true);
+        up.gameObject.SetActive(true);
+        down.gameObject.SetActive(true);
+        confirm.gameObject.SetActive(true);
+
+        this.gameObject.SetActive(true);
+
+        DisplayStage(stageInd);
+        DisplayMusic(musicInd);
+    }
+
+    public void EndSelection()
+    {
+        selectionStart = false;
+
+        left.gameObject.SetActive(false);
+        right.gameObject.SetActive(false);
+        up.gameObject.SetActive(false);
+        down.gameObject.SetActive(false);
+        confirm.gameObject.SetActive(false);
+
+        this.gameObject.SetActive(false);
+    }
+
+    public void DisplayStage(int index)
+    {
+        if(index < 0 || index >= stageSelection.Count)
+        {
+            return;
+        }
+
+        if(previousBackground)
+        {
+            previousBackground.SetActive(false);
+        }
+        stageSelection[index].background.SetActive(true);
+        stageName.sprite = stageSelection[index].backgroundName;
+        previousBackground = stageSelection[index].background;
+        currStageGeo = stageSelection[index].StageGeo;
+
+        LeftStageArrow.SetActive(true);
+        RightStageArrow.SetActive(true);
+
+        if (stageInd == stageSelection.Count - 1)
+        {
+            RightStageArrow.SetActive(false);
+        }
+
+        if (stageInd == 0)
+        {
+            LeftStageArrow.SetActive(false);
+        }
+    }
+
+    public void DisplayMusic(int index)
+    {
+        if (index < 0 || index >= musicSelection.Count)
+        {
+            return;
+        }
+
+        songDisplayName.text = musicSelection[index].MusicDisplayName;
+
+        if(previousSongHaveIntro)
+        {
+            AudioManager.instance.StopLoopableWithIntro(previousSongName);
+        }
+        else
+        {
+            AudioManager.instance.StopSound(previousSongName);
+        }
+
+        if(musicSelection[index].containsIntro)
+        {
+            AudioManager.instance.PlayLoopableWithIntro(musicSelection[index].songName);
+            previousSongHaveIntro = true;
+        }
+        else
+        {
+            AudioManager.instance.PlaySound(musicSelection[index].songName);
+            previousSongHaveIntro = false;
+        }
+
+        previousSongName = musicSelection[index].songName;
+
+        UpMusicArrow.SetActive(true);
+        DownMusicArrow.SetActive(true);
+
+        if (musicInd == musicSelection.Count - 1)
+        {
+            UpMusicArrow.SetActive(false);
+        }
+
+        if (musicInd == 0)
+        {
+            DownMusicArrow.SetActive(false);
+        }
+    }
+
+    public void SwitchStage(bool right)
+    {
+        if(stageSelection.Count == 0 || !selectionStart)
+        {
+            return;
+        }
+
+        if(right)
+        {
+            if(stageInd < stageSelection.Count - 1)
+            {
+                stageInd++;
+                DisplayStage(stageInd);
+            }
+            else
+            {
+                return;
+            }
+        }
+        else
+        {
+            if (stageInd > 0)
+            {
+                stageInd--;
+                DisplayStage(stageInd);
+            }
+            else
+            {
+                return;
+            }
+        }
+    }
+
+    public void SwitchMusic(bool up)
+    {
+        if (musicSelection.Count == 0 || !selectionStart)
+        {
+            return;
+        }
+
+        if (up)
+        {
+            if (musicInd < musicSelection.Count - 1)
+            {
+                musicInd++;
+                DisplayMusic(musicInd);
+            }
+            else
+            {
+                return;
+            }
+        }
+        else
+        {
+            if (musicInd > 0)
+            {
+                musicInd--;
+                DisplayMusic(musicInd);
+            }
+            else
+            {
+                return;
+            }
+        }
+    }
+
+    public void ActivateGeo()
+    {
+        if(currStageGeo)
+        {
+            currStageGeo.SetActive(true);
+        }
+    }
+
+    public void DeactivateGeo()
+    {
+        if (currStageGeo)
+        {
+            currStageGeo.SetActive(false);
+            currStageGeo = null;
+        }
+    }
+}
