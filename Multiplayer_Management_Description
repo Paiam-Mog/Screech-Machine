@@ -1,7 +1,11 @@
 Multiplayer Management System:
 
 Description:
-This system manages and handles the registration of players as they enter/connect to the game. Implemented together with Unity's Input Controller system that allows for the creation of prefabs from a button press. Whenever a player joined the game, they would spawn their associated Player object and it would call the Multiplayer Manager to connect itself with the system, assigning them as either Player 1 or Player 2 and passing in the appropriate player values to the object. Once the players later on selected the character they would control, it would register them as the Right or Left player (our UI cares more about Right or Left rather than Player 1 or Player 2). The system also handles some managment or control with the players such as retrieving or reseting their scores, assigning who holds the crown (who won last round).
+This system manages and handles the registration of players as they enter/connect to the game. Implemented together with Unity's Input Controller system that allows for the 
+creation of prefabs from a button press. Whenever a player joined the game, they would spawn their associated Player object and it would call the Multiplayer Manager to connect 
+itself with the system, assigning them as either Player 1 or Player 2 and passing in the appropriate player values to the object. Once the players later on selected the 
+character they would control, it would register them as the Right or Left player (our UI cares more about Right or Left rather than Player 1 or Player 2). The system also 
+handles some managment or control with the players such as retrieving or reseting their scores, assigning who holds the crown (who won last round).
 
 
 Coding Features and Strategies Utilized in this system:
