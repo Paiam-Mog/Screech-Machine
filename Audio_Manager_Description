@@ -1,0 +1,235 @@
+Audio Manager System:
+
+Description:
+This system was used to handle and manage the different sound effects and music tracks in the game. The Sound struct held an audio clip, a reference name, and any associated values or settings for the clip. The system used this structure to create 3 different types of Sounds: a basic Sound that can be looped or played once, an LoopableWithIntro Sound that had an nonlooping intro Sound clip that plays once and a looping Sound clip that plays once the intro clip is done, and a Sound Group to hold a list of sounds to randomly select from and play each time the group is invoked. The LoopableWithIntro was used for our game tracks as they featured an intro clip and a looping clip that continues throughout the match.
+
+This system is a modified version of one made by Brackeys in this tutorial: https://www.youtube.com/watch?v=6OT43pvUyfY&ab_channel=Brackeys
+The base concept and Sound struct functionality was presented in the tutorial, but the LoopableWithIntro and Sound Group code was written by me.
+
+
+Coding Features and Strategies Utilized in this system:
+ - Use of similar structures and base functionality of the Sound struct to create a variety of different scalable audio features 
+
+
+Code Snippets:
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class AudioManager : MonoBehaviour
+{
+    public static AudioManager instance = null;
+
+    [System.Serializable]
+    public struct Sound
+    {
+        public string name;
+        public AudioClip clip;
+        [Range(0.0f, 1.0f)]
+        public float volume;
+        [Range(0.1f, 3.0f)]
+        public float pitch;
+
+        //[HideInInspector]
+        public AudioSource source;
+
+        public bool loop;
+    }
+
+    [System.Serializable]
+    public struct LoopableWithIntro
+    {
+        public string name;
+        public Sound Intro;
+        public Sound Loop;
+    }
+
+    [System.Serializable]
+    public struct SoundGroup
+    {
+        public string name;
+        public List<Sound> sounds;
+    }
+
+    public Sound[] Sounds;
+    public LoopableWithIntro[] IntroToLoopSounds;
+    public SoundGroup[] SoundGroups;
+
+    private void Awake()
+    {
+        if (instance != null)
+        {
+            Destroy(this.gameObject);
+            return;
+        }
+
+        instance = this;
+
+        for (int i = 0; i < Sounds.Length; i++)
+        {
+            Sound s = Sounds[i];
+            s.source = gameObject.AddComponent<AudioSource>();
+            s.source.clip = s.clip;
+            s.source.volume = s.volume;
+            s.source.pitch = s.pitch;
+            s.source.loop = s.loop;
+
+            Sounds[i] = s;
+        }
+
+        for (int i = 0; i < IntroToLoopSounds.Length; i++)
+        {
+            LoopableWithIntro il = IntroToLoopSounds[i];
+            Sound s = il.Intro;
+            s.source = gameObject.AddComponent<AudioSource>();
+            s.source.clip = s.clip;
+            s.source.volume = s.volume;
+            s.source.pitch = s.pitch;
+            s.source.loop = s.loop;
+            il.Intro = s;
+
+            Sound l = il.Loop;
+            l.source = gameObject.AddComponent<AudioSource>();
+            l.source.clip = l.clip;
+            l.source.volume = l.volume;
+            l.source.pitch = l.pitch;
+            l.source.loop = l.loop;
+            il.Loop = l;
+
+            IntroToLoopSounds[i] = il;
+        }
+
+        for(int i = 0; i < SoundGroups.Length; i++)
+        {
+            for(int j = 0; j < SoundGroups[i].sounds.Count; j++)
+            {
+                Sound s = SoundGroups[i].sounds[j];
+                s.source = gameObject.AddComponent<AudioSource>();
+                s.source.clip = s.clip;
+                s.source.volume = s.volume;
+                s.source.pitch = s.pitch;
+                s.source.loop = s.loop;
+
+                SoundGroups[i].sounds[j] = s;
+            }
+        }
+    }
+   
+    public void PlaySound(string name)
+    {
+        for (int i = 0; i < Sounds.Length; i++)
+        {
+            if (Sounds[i].name == name)
+            {
+                Sounds[i].source.Play();
+            }
+        }
+    }
+
+    public void PlaySoundOnce(string name)
+    {
+        for (int i = 0; i < Sounds.Length; i++)
+        {
+            if (Sounds[i].name == name)
+            {
+                Sounds[i].source.PlayOneShot(Sounds[i].source.clip);
+            }
+        }
+    }
+
+    public void StopSound(string name)
+    {
+        for (int i = 0; i < Sounds.Length; i++)
+        {
+            if (Sounds[i].name == name)
+            {
+                Sounds[i].source.Stop();
+            }
+        }
+    }
+
+    public void StopAllSounds()
+    {
+        for (int i = 0; i < Sounds.Length; i++)
+        {
+            Sounds[i].source.Stop();
+        }
+
+        for (int i = 0; i < IntroToLoopSounds.Length; i++)
+        {
+            IntroToLoopSounds[i].Intro.source.Stop();
+            IntroToLoopSounds[i].Loop.source.Stop();
+        }
+
+        for(int i = 0; i < SoundGroups.Length; i++)
+        {
+            for(int j = 0; j < SoundGroups[i].sounds.Count; j++)
+            {
+                SoundGroups[i].sounds[j].source.Stop();
+            }
+        }
+    }
+
+    public void PlayLoopableWithIntro(string name)
+    {
+        for (int i = 0; i < IntroToLoopSounds.Length; i++)
+        {
+            if(IntroToLoopSounds[i].name == name)
+            {
+                StartCoroutine(PlayIntroToLoop(IntroToLoopSounds[i].Intro, IntroToLoopSounds[i].Loop));
+            }
+        }
+    }
+
+    public void StopLoopableWithIntro(string name)
+    {
+        for (int i = 0; i < IntroToLoopSounds.Length; i++)
+        {
+            if (IntroToLoopSounds[i].name == name)
+            {
+                IntroToLoopSounds[i].Intro.source.Stop();
+                IntroToLoopSounds[i].Loop.source.Stop();
+                StopAllCoroutines();
+            }            
+        }
+    }
+
+    IEnumerator PlayIntroToLoop(Sound intro, Sound loop)
+    {
+        intro.source.Play();
+
+        yield return new WaitUntil(() => !intro.source.isPlaying);
+
+        loop.source.Play();
+        yield break;
+    }
+
+    public void PlaySoundGroup(string name)
+    {
+        for (int i = 0; i < SoundGroups.Length; i++)
+        {
+            if (SoundGroups[i].name == name)
+            {
+                int randInd = Random.Range(0, SoundGroups[i].sounds.Count);
+
+                SoundGroups[i].sounds[randInd].source.Play();
+            }
+        }
+    }
+
+    public void StopSoundGroup(string name)
+    {
+        for (int i = 0; i < SoundGroups.Length; i++)
+        {
+            if (SoundGroups[i].name == name)
+            {
+                for(int j = 0; j < SoundGroups[i].sounds.Count; j++)
+                {
+                    SoundGroups[i].sounds[j].source.Stop();
+                }
+            }
+        }
+    }
+}
+
