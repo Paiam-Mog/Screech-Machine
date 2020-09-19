@@ -1,0 +1,106 @@
+Menu Button Controller System:
+
+Description:
+This system was developed to mimic the behavior of a UI button as players used game controllers to interact with the menus in the game instead of a mouse and keboard. A cursor
+object called a Selector would move around the screen in response to the player input and when the Selector hovered over the menu button, if the "click" or select button was
+pressed then it would invoke the Click Event for the button. The controller also tracks which players' Selector hovered over the button and which invoked the click to prevent
+issues of misassigning selections.
+
+
+Coding Features and Strategies Utilized in this system:
+ - Utilized tagged collision detection and Unity Events to mimic the behvaior of a UI button in a non-UI environment
+ - Implemented hover tracking to represent button highlight display and determine which Player Selector invoked the Click
+
+Code Snippets:
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Events;
+
+public class Menu_Button_Controller : MonoBehaviour
+{
+    #region Public Variables
+    public UnityEvent ClickEvent;
+    public Sprite buttonHighlight;
+    public SpriteRenderer buttonSpriteRend;
+    #endregion
+
+    #region Private Variables
+    private Player_Controller player;
+    private Sprite defaultButton;
+    private List<Player_Controller> players = new List<Player_Controller>();
+    #endregion
+
+    public void Click()
+    {
+        if(this.gameObject.activeSelf)
+        {
+            ClickEvent.Invoke();
+            AudioManager.instance.PlaySoundOnce("Menu_Button_Click");
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.gameObject.tag == "Selector")
+        {
+            Player_Controller plr = other.gameObject.GetComponent<Selector>().player;
+
+            if (!players.Contains(plr))
+            {
+                players.Add(plr);
+                plr.menuButton = this;
+            }
+            
+            if(buttonSpriteRend)
+            {
+                buttonSpriteRend.sprite = buttonHighlight;
+            }
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.gameObject.tag == "Selector")
+        {
+            Player_Controller plr = other.gameObject.GetComponent<Selector>().player;
+            if (players.Contains(plr))
+            {
+                plr.menuButton = null;
+                players.Remove(plr);
+
+                if (buttonSpriteRend)
+                {
+                    buttonSpriteRend.sprite = defaultButton;
+                }
+            }
+        }
+    }
+
+    private void OnDisable()
+    {
+        if(players.Count > 0)
+        {
+            for(int i = 0; i < players.Count; i++)
+            {
+                players[i].menuButton = null;
+            }
+
+            players.Clear();
+        }
+
+        if (buttonSpriteRend)
+        {
+            buttonSpriteRend.sprite = defaultButton;
+        }
+    }
+
+    private void OnEnable()
+    {
+        if(buttonSpriteRend)
+        {
+            defaultButton = buttonSpriteRend.sprite;
+        }
+    }
+}
