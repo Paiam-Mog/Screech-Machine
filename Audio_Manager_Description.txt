@@ -1,7 +1,11 @@
 Audio Manager System:
 
 Description:
-This system was used to handle and manage the different sound effects and music tracks in the game. The Sound struct held an audio clip, a reference name, and any associated values or settings for the clip. The system used this structure to create 3 different types of Sounds: a basic Sound that can be looped or played once, an LoopableWithIntro Sound that had an nonlooping intro Sound clip that plays once and a looping Sound clip that plays once the intro clip is done, and a Sound Group to hold a list of sounds to randomly select from and play each time the group is invoked. The LoopableWithIntro was used for our game tracks as they featured an intro clip and a looping clip that continues throughout the match.
+This system was used to handle and manage the different sound effects and music tracks in the game. The Sound struct held an audio clip, a reference name, and any associated
+values or settings for the clip. The system used this structure to create 3 different types of Sounds: a basic Sound that can be looped or played once, an LoopableWithIntro
+Sound that had an nonlooping intro Sound clip that plays once and a looping Sound clip that plays once the intro clip is done, and a Sound Group to hold a list of sounds to
+randomly select from and play each time the group is invoked. The LoopableWithIntro was used for our game tracks as they featured an intro clip and a looping clip that 
+continues throughout the match.
 
 This system is a modified version of one made by Brackeys in this tutorial: https://www.youtube.com/watch?v=6OT43pvUyfY&ab_channel=Brackeys
 The base concept and Sound struct functionality was presented in the tutorial, but the LoopableWithIntro and Sound Group code was written by me.
