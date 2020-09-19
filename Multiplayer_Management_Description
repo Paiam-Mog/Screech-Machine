@@ -1,0 +1,185 @@
+Multiplayer Management System:
+
+Description:
+This system manages and handles the registration of players as they enter/connect to the game. Implemented together with Unity's Input Controller system that allows for the creation of prefabs from a button press. Whenever a player joined the game, they would spawn their associated Player object and it would call the Multiplayer Manager to connect itself with the system, assigning them as either Player 1 or Player 2 and passing in the appropriate player values to the object. Once the players later on selected the character they would control, it would register them as the Right or Left player (our UI cares more about Right or Left rather than Player 1 or Player 2). The system also handles some managment or control with the players such as retrieving or reseting their scores, assigning who holds the crown (who won last round).
+
+
+Coding Features and Strategies Utilized in this system:
+ - Utilized prefab generation and callback style methods to communicate with the multiplayer manager and allow the player assignment to be arbitary
+
+
+Code Snippets:
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+public class MultiplayerManager : MonoBehaviour
+{
+    #region Public Variables
+    public bool player1Left = true;
+    public Sprite playerLeftSprite;
+    public Sprite playerRightSprite;
+    public Material playerLeftMat;
+    public Material playerRightMat;
+    public RuntimeAnimatorController playerLeftAnimator;
+    public RuntimeAnimatorController playerRightAnimator;
+    public Transform playerLeftSpawnPoint;
+    public Transform playerRightSpawnPoint;
+    public Player_Ready_Controller playerLeftSlider;
+    public Player_Ready_Controller playerRightSlider;
+    public Sprite Player1CharSelect;
+    public Sprite Player2CharSelect;
+    public Indicator_Controller p1Indicator;
+    public Indicator_Controller p2Indicator;
+    public Sprite player1IndLeft;
+    public Sprite player1IndRight;
+    public Sprite player2IndLeft;
+    public Sprite player2IndRight;
+    #endregion
+
+    #region Private Variables
+    [SerializeField]
+    private List<GameObject> players = new List<GameObject>();
+
+    private GameObject player1 = null;
+    private GameObject player2 = null;
+    private int characterSelectedCounter = 0;
+    #endregion
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        players.Clear();
+    }
+
+    public void ConnectPlayer(GameObject player)
+    {
+        players.Add(player);
+
+        if(player1 == null)
+        {
+            player1 = player;
+            player1.GetComponent<Player_Controller>().spriteRenderer.sprite = Player1CharSelect;
+            player1.GetComponent<Player_Controller>().indicator = Player1CharSelect;
+            player1.transform.position = playerLeftSpawnPoint.position + Vector3.up * 3;
+            p1Indicator.player = player1;
+        }
+        else
+        {
+            player2 = player;
+            player2.GetComponent<Player_Controller>().spriteRenderer.sprite = Player2CharSelect;
+            player2.GetComponent<Player_Controller>().indicator = Player2CharSelect;
+            player2.transform.position = playerRightSpawnPoint.position + Vector3.up * 3;
+            p2Indicator.player = player2;
+        }
+
+        GameManager.instance.PlayerConnected();
+
+        if(players.Count == 2)
+        {
+            GetComponent<PlayerInputManager>().enabled = false;
+        }
+    }
+
+    public void RegisterPlayers()
+    {
+        if(player1Left)
+        {
+            player1.GetComponent<Player_Controller>().playerRight = false;
+            player1.GetComponent<Player_Controller>().spriteRenderer.sprite = playerLeftSprite;
+            player1.GetComponent<Player_Controller>().playerMaterial = playerLeftMat;
+            player1.GetComponent<Player_Controller>().playerReadyController = playerLeftSlider;
+            player1.GetComponent<Animator>().runtimeAnimatorController = playerLeftAnimator;
+            player1.GetComponent<Player_Controller>().playerIndicatorRend.sprite = player1IndLeft;
+            player1.transform.position = playerLeftSpawnPoint.position;
+        }
+        else
+        {
+            player1.GetComponent<Player_Controller>().playerRight = true;
+            player1.GetComponent<Player_Controller>().spriteRenderer.sprite = playerRightSprite;
+            player1.GetComponent<Player_Controller>().playerMaterial = playerRightMat;
+            player1.GetComponent<Player_Controller>().playerReadyController = playerRightSlider;
+            player1.GetComponent<Animator>().runtimeAnimatorController = playerRightAnimator;
+            player1.GetComponent<Player_Controller>().playerIndicatorRend.sprite = player1IndRight;
+            player1.transform.position = playerRightSpawnPoint.position;
+        }        
+        
+        player1.GetComponent<Player_Controller>().InitializePlayer();
+
+        if (player1Left)
+        {
+            player2.GetComponent<Player_Controller>().playerRight = true;
+            player2.GetComponent<Player_Controller>().spriteRenderer.sprite = playerRightSprite;
+            player2.GetComponent<Player_Controller>().playerMaterial = playerRightMat;
+            player2.GetComponent<Player_Controller>().playerReadyController = playerRightSlider;
+            player2.GetComponent<Animator>().runtimeAnimatorController = playerRightAnimator;
+            player2.GetComponent<Player_Controller>().playerIndicatorRend.sprite = player2IndRight;
+            player2.transform.position = playerRightSpawnPoint.position;
+        }
+        else
+        {
+            player2.GetComponent<Player_Controller>().playerRight = false;
+            player2.GetComponent<Player_Controller>().spriteRenderer.sprite = playerLeftSprite;
+            player2.GetComponent<Player_Controller>().playerMaterial = playerLeftMat;
+            player2.GetComponent<Player_Controller>().playerReadyController = playerLeftSlider;
+            player2.GetComponent<Animator>().runtimeAnimatorController = playerLeftAnimator;
+            player2.GetComponent<Player_Controller>().playerIndicatorRend.sprite = player2IndLeft;
+            player2.transform.position = playerLeftSpawnPoint.position;
+        }
+
+        player2.GetComponent<Player_Controller>().InitializePlayer();        
+    }
+
+    public void NotifyCharacterSelected()
+    {
+        characterSelectedCounter++;
+
+        if(characterSelectedCounter == 2)
+        {
+            GameManager.instance.FinishCharSelect();
+        }
+    }
+
+    public Vector2 GetPScores()
+    {
+        return new Vector2(player1.GetComponent<Player_Controller>().GetScore(), player2.GetComponent<Player_Controller>().GetScore());
+    }
+
+    public void ResetPScores()
+    {
+        player1.GetComponent<Player_Controller>().ResetPoints();
+        player2.GetComponent<Player_Controller>().ResetPoints();
+    }
+
+    public bool CheckIfPlayer1(GameObject player)
+    {
+        return player1 == player;
+    }
+
+    public List<GameObject> GetPlayers()
+    {
+        return players;
+    }
+
+    public void SetWinnerCrown(bool player1Winner)
+    {
+        player1.GetComponent<Player_Controller>().DisableWinnerCrown();
+        player2.GetComponent<Player_Controller>().DisableWinnerCrown();
+
+        if (player1Winner)
+        {
+            player1.GetComponent<Player_Controller>().EnableWinnerCrown();
+        }
+        else
+        {
+            player2.GetComponent<Player_Controller>().EnableWinnerCrown();
+        }
+    }
+
+    public void ResetRegistration()
+    {
+        characterSelectedCounter = 0;
+    }
+}
