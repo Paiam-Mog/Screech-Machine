@@ -1,0 +1,266 @@
+Dodgeball Controller System:
+
+Description:
+This system manages the behavior of the dodgeballs in the game. When the dodgeball is not being held by a player, every time it collides with the wall or an object it picks up
+speed. At the start of the round when no one has grabbed the ball yet (previousHolder = false), the ball does not pick up speed as it was difficult for players to interact with
+the ball at high speeds at the start of the round. When the ball is caught and held by a player, it orbits around them and the orbit path follows the direction the player aims
+at. When the ball is held, the player can charge it up to increase its speed to a cap, increasing both the orbit and move speed. The ball also changes its material color to
+match that of the player who caught the ball.
+
+
+Coding Features and Strategies Utilized in this system:
+ - For the orbit of the ball to properly follow the player as they move across the screen and rotate according to the direction the player is aiming, a parent "rotator" object
+ was used to bind the ball to and follow around preventing issues that arised with the ball interacting with the player object.
+ - Use of an optimal positioning system to prevent the ball from pulling too far out of orbit and keeping them in the proper orbit path
+
+
+Code Snippets:
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Ball_Controller : MonoBehaviour
+{
+    #region Enumerators
+    public enum BallStates
+    {
+        BallHeld,
+        BallCharge,
+        None
+    }
+    #endregion
+
+    #region Public Variables
+    public Rigidbody ballRigidBody = null;
+    public Vector3 startVelocity = Vector3.zero;
+    public float orbitSpeed = 30.0f;
+    private float orbitSpeedStart = 60.0f;
+    public float radius = 2.0f;
+    public float radiusSpeed = 0.5f;
+
+    [Tooltip("The max amount the velocity magnitude of the ball can increase by.")]
+    public float maxChargeVal = 0.2f;
+    [Tooltip("How long it takes to reach the max charge of the velocity.")]
+    public float maxChargeTime = 1.0f;
+    [Tooltip("The max amount the ball's rotation can speed up by multiplicatively.")]
+    public float maxBallChargeVal = 3.0f;
+    [Tooltip("The amount by which the balls velocity magnitude increase by after each bounce.")]
+    public float bounceSpeedIncrease = 5.0f;
+    public bool enableBounceSpeedSystem = false;
+    #endregion
+
+    #region Private Variables
+    private GameObject playerHolding;
+    private GameObject previousHolder;
+    private BallStates ballState = BallStates.None;
+    private float velocityMagnitude = 0.0f;
+    private float velocityChargeVal = 0.0f;
+    private float timer = 0.0f;
+    private Vector3 startSpot;
+    private Color startColor;
+    private float orbitUpAngleDeviation = 0.0f;
+    private float oldUpDeviation = 0.0f;
+    private Vector3 oldHolderPosition = Vector3.zero;
+    private float currentRotationAngle = 0.0f;
+
+    private GameObject rotator;
+    #endregion
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        if (ballRigidBody)
+        {
+            ballRigidBody.velocity = startVelocity;
+            velocityMagnitude = startVelocity.magnitude;
+        }
+
+        orbitSpeed = orbitSpeedStart * velocityMagnitude;
+        startSpot = transform.position;
+
+        startColor = GetComponent<MeshRenderer>().material.color;
+        rotator = new GameObject("Rotator");
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if(ballState == BallStates.BallHeld || ballState == BallStates.BallCharge)
+        {
+            if (ballRigidBody)
+            {
+                ballRigidBody.velocity = Vector3.zero;
+                ballRigidBody.isKinematic = true;
+            }
+
+            rotator.transform.position = playerHolding.transform.position;
+            transform.RotateAround(rotator.transform.position, rotator.transform.up, orbitSpeed * Time.deltaTime);
+
+            Vector3 OptimalPosition = transform.position - rotator.transform.position;
+            OptimalPosition.Normalize();
+            OptimalPosition = OptimalPosition * radius + rotator.transform.position;
+
+            transform.position = Vector3.MoveTowards(transform.position, OptimalPosition, radiusSpeed * Time.deltaTime);
+        }
+        
+        if(ballState == BallStates.BallCharge)
+        {
+            if(timer < maxChargeTime)
+            {
+                velocityMagnitude += velocityChargeVal * Time.deltaTime;
+                orbitSpeed += orbitSpeed * maxBallChargeVal * Time.deltaTime;
+                timer += Time.deltaTime;
+            }
+            else
+            {
+                ballState = BallStates.BallHeld;
+            }
+        }
+    }
+
+    public void ThrowBall(Vector3 newDirection)
+    {
+        if(ballRigidBody && (ballState == BallStates.BallHeld || ballState == BallStates.BallCharge))
+        {
+            ballRigidBody.isKinematic = false;
+            newDirection.z = 0;
+            newDirection.Normalize();
+            transform.position = newDirection * radius + playerHolding.transform.position;
+            ballRigidBody.velocity = newDirection * velocityMagnitude;
+            ballState = BallStates.None;   
+        }
+
+        timer = 0.0f;
+        playerHolding = null;
+
+        transform.SetParent(null);
+        oldUpDeviation = 0.0f;
+        orbitUpAngleDeviation = 0.0f;
+        rotator.transform.rotation = Quaternion.identity;
+    }
+
+    public void OrbitPlayer(GameObject player, Color playerColor)
+    {
+        if(ballRigidBody)
+        {
+            velocityMagnitude = ballRigidBody.velocity.magnitude;
+            if(velocityMagnitude < startVelocity.magnitude)
+            {
+                velocityMagnitude = startVelocity.magnitude;
+            }
+            velocityChargeVal = velocityMagnitude * maxChargeVal / maxChargeTime;
+        }
+        orbitSpeed = orbitSpeedStart * velocityMagnitude;
+        ballState = BallStates.BallHeld;
+        playerHolding = player;
+        previousHolder = player;
+
+        rotator.transform.position = playerHolding.transform.position;
+        transform.SetParent(rotator.transform);
+        transform.localPosition = Vector3.right * radius;
+        rotator.transform.Rotate(playerHolding.transform.forward, orbitUpAngleDeviation - oldUpDeviation);
+
+        StartCoroutine(ChangeColor(playerColor, 0.5f));
+    }
+
+    public void ChargeBall()
+    {
+        if(ballState == BallStates.BallHeld)
+        {
+            ballState = BallStates.BallCharge;
+        }
+    }
+
+    public void ResetBall()
+    {
+        transform.position = startSpot;
+        ballRigidBody.velocity = startVelocity;
+        ballRigidBody.isKinematic = false;
+        ballState = BallStates.None;
+
+        if(orbitSpeedStart > 0.0f)
+        {
+            orbitSpeed = orbitSpeedStart * velocityMagnitude;
+        }
+
+        if (playerHolding != null)
+        {
+            playerHolding.GetComponent<Player_Controller>().ResetBallStates();
+        }
+        playerHolding = null;
+        previousHolder = null;
+
+        GetComponent<MeshRenderer>().material.color = startColor;
+        GetComponent<TrailRenderer>().material.color = startColor;
+    }
+
+    public void ResetBallSpeed()
+    {
+        velocityMagnitude /= 2;
+
+        if(velocityMagnitude < startVelocity.magnitude)
+        {
+            velocityMagnitude = startVelocity.magnitude * 2;
+        }
+
+        if (ballRigidBody)
+        {
+            ballRigidBody.velocity = Vector3.right * velocityMagnitude;
+        }
+    }
+
+    public GameObject GetPreviousHolder()
+    {
+        return previousHolder;
+    }
+
+    IEnumerator ChangeColor(Color newColor, float time)
+    {
+        Color colorDif = (newColor - GetComponent<MeshRenderer>().material.color);
+
+        for(float i = 0.0f; i < 1.0f; i += Time.deltaTime / time)
+        {
+            Color prevColor = GetComponent<MeshRenderer>().material.color;
+            prevColor += colorDif * Time.deltaTime / time;
+            GetComponent<MeshRenderer>().material.color = prevColor;
+            GetComponent<TrailRenderer>().material.color = prevColor;
+            yield return null;
+        }
+
+        GetComponent<MeshRenderer>().material.color = newColor;
+        GetComponent<TrailRenderer>().material.color = newColor;
+        yield break;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        ParticleSystem ps = GetComponent<ParticleSystem>();
+        var main = ps.main;
+
+        main.startColor = GetComponent<MeshRenderer>().material.color;
+        ps.Emit(20);
+
+        if(enableBounceSpeedSystem && previousHolder)
+        {
+            ballRigidBody.velocity =  (ballRigidBody.velocity.magnitude + bounceSpeedIncrease) * Vector3.Normalize(ballRigidBody.velocity);
+        }
+
+        if(collision.gameObject.tag == "Player")
+        {
+            AudioManager.instance.PlaySound("Ball_Hit_Robot");
+        }
+        else
+        {
+            AudioManager.instance.PlaySound("Ball_Hit_Concrete");
+        }
+    }
+
+    public void UpdateOrbitAngleDeviation(float angle)
+    {
+        oldUpDeviation = orbitUpAngleDeviation;
+        orbitUpAngleDeviation = angle;
+
+        rotator.transform.Rotate(playerHolding.transform.forward, orbitUpAngleDeviation - oldUpDeviation);
+    }
+}
